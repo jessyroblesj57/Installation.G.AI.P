@@ -87,6 +87,8 @@ echo "[*] Starting VPN Gateway (Gluetun)..."
 # This is one long line to avoid line-ending issues
 docker run -d \
   --name "$CONTAINER_VPN" \
+  --mac-address="$RAND_MAC" \
+  --hostname="$RAND_HOST" \
   --cap-add=NET_ADMIN \
   --device /dev/net/tun:/dev/net/tun \
   -v "$VPN_DIR:/gluetun" \
@@ -122,7 +124,7 @@ for i in {1..15}; do
 done
 
 # If container IS running, check for the external IP
-VPN_IP=$(docker exec "$CONTAINER_VPN" curl -s https://ipinfo.io/ip)
+VPN_IP=$(docker exec "$CONTAINER_VPN" wget -qO- https://ipinfo.io/ip)
 
 if [[ -z "$VPN_IP" ]]; then
     echo "[!] VPN IP check failed. Aborting."
@@ -142,8 +144,6 @@ echo "[*] Launching Firefox VM..."
 docker run -d \
   --name $CONTAINER_BROWSER \
   --network=container:$CONTAINER_VPN \
-  --mac-address="$RAND_MAC" \
-  --hostname="$RAND_HOST" \
   -e PUID=$(id -u) \
   -e PGID=$(id -g) \
   -e CUSTOM_RES_W=$WIDTH \
