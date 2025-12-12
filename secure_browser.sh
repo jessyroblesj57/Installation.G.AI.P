@@ -142,8 +142,6 @@ echo "[*] Launching Firefox VM..."
 docker run -d \
   --name $CONTAINER_BROWSER \
   --network=container:$CONTAINER_VPN \
-  --mac-address="$RAND_MAC" \
-  --hostname="$RAND_HOST" \
   -e PUID=$(id -u) \
   -e PGID=$(id -g) \
   -e CUSTOM_RES_W=$WIDTH \
