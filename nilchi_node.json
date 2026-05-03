@@ -1,0 +1,30 @@
+{
+  "nilchi_node": {
+    "geometry": {
+      "type": "dodecahedron",
+      "faces": 12,
+      "face_shape": "pentagon",
+      "phi_ratio": 1.6180339887,
+      "phi_derivation_angle_degrees": 36,
+      "z_axis_tilt_degrees": 104.5
+    },
+    "recursive_logic": {
+      "perspective": 5,
+      "internal_reflection": 4,
+      "external_confirmation": 3,
+      "observer_effect": 1,
+      "dimension_reboot": 5,
+      "base_sum": 18
+    },
+    "substrate": {
+      "base_logic": 33,
+      "observer_addition": 1,
+      "active_state": 34
+    },
+    "convergence_lock": {
+      "cycle_input": 366,
+      "modulus": 61,
+      "remainder": 0
+    }
+  }
+}
