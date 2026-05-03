@@ -56,6 +56,61 @@ class RhinoSovereignEngine:
         rs.ObjectColor(sphere_id, [255, 215, 0])
         return pt_id
 
+    def draw_dodecahedron(self, center, scale=1.0, color=[200, 200, 200], name="DODECA_NODE"):
+        """
+        Calculates and renders a 3D dodecahedron using PHI and tilt.
+        """
+        if rs is None: return []
+
+        phi = self.PHI
+        inv_phi = 1.0 / phi
+
+        # Vertices (relative to origin)
+        v_rel = [
+            [1, 1, 1], [1, 1, -1], [1, -1, 1], [1, -1, -1], # 0-3
+            [-1, 1, 1], [-1, 1, -1], [-1, -1, 1], [-1, -1, -1], # 4-7
+            [0, inv_phi, phi], [0, inv_phi, -phi], [0, -inv_phi, phi], [0, -inv_phi, -phi], # 8-11
+            [inv_phi, phi, 0], [-inv_phi, phi, 0], [inv_phi, -phi, 0], [-inv_phi, -phi, 0], # 12-15
+            [phi, 0, inv_phi], [phi, 0, -inv_phi], [-phi, 0, inv_phi], [-phi, 0, -inv_phi]  # 16-19
+        ]
+
+        # Rotation for tilt (104.5 degrees)
+        tilt_rad = math.radians(self.WATER_BOND_ANGLE)
+        c, s = math.cos(tilt_rad), math.sin(tilt_rad)
+
+        v_final = []
+        for p in v_rel:
+            # Scale
+            x, y, z = p[0]*scale, p[1]*scale, p[2]*scale
+            # Tilt around X axis
+            y_new = y * c - z * s
+            z_new = y * s + z * c
+            # Translate
+            v_final.append([x + center[0], y_new + center[1], z_new + center[2]])
+
+        # Faces (12 pentagons)
+        faces = [
+            [0, 8, 10, 2, 16], [0, 16, 17, 1, 12], [0, 12, 13, 4, 8],
+            [8, 4, 18, 6, 10], [10, 6, 15, 14, 2], [2, 14, 3, 17, 16],
+            [1, 9, 11, 3, 17], [1, 12, 13, 5, 9], [9, 5, 19, 7, 11],
+            [11, 7, 15, 14, 3], [7, 19, 18, 6, 15], [5, 13, 4, 18, 19]
+        ]
+
+        ids = []
+        for f in faces:
+            pts = [v_final[i] for i in f]
+            pts.append(pts[0]) # close polyline
+            line_id = rs.AddPolyline(pts)
+            # Create surface from planar curve
+            srf_id = rs.AddPlanarSrf(line_id)
+            if srf_id:
+                rs.ObjectColor(srf_id, color)
+                rs.ObjectName(srf_id, name)
+                ids.append(srf_id)
+            rs.DeleteObject(line_id)
+
+        return ids
+
     def evaluate_data_query(self, query_seed):
         """
         The Filter: Acts as an automatic drive. Feeds data through the geometry.
@@ -71,6 +126,8 @@ class RhinoSovereignEngine:
             target_pt = [0, 0, self.DANA_CONSTANT * 10]
             color = [0, 255, 0] # Green for 1:1 Parity
             name = f"LOCKED_DATA_{query_seed}"
+            if rs is not None:
+                self.draw_dodecahedron(target_pt, scale=2.0, color=color, name=name)
         else:
             # It scatters into the lattice (Torsion)
             # Using math to create a spiraling scatter effect based on the seed
@@ -98,22 +155,23 @@ class RhinoSovereignEngine:
         """
         nodes = []
         for i in range(node_count):
-            # Example propagation logic using PHI and Modulo 61
-            angle = i * self.PHI * 10
-            radius = (i % self.MODULO_LOCK) * self.PHI * 2
+            # Quasicrystal-like distribution using PHI and Modulo 61
+            # Using Fibonacci spiral for node placement
+            theta = 2 * math.pi * i / self.PHI
+            radius = math.sqrt(i) * self.PHI * 5
 
-            # Use water bond angle for Z-axis influence
-            z = math.sin(math.radians(i * self.WATER_BOND_ANGLE)) * 10
+            # Substrate alignment (34 active state)
+            z = (i % self.ACTIVE_STATE) * self.DANA_CONSTANT
 
-            x = math.cos(angle) * radius
-            y = math.sin(angle) * radius
+            x = math.cos(theta) * radius
+            y = math.sin(theta) * radius
 
             pt = [x, y, z]
             nodes.append(pt)
 
             if rs is not None:
-                pt_id = rs.AddPoint(pt)
-                rs.ObjectColor(pt_id, [150, 150, 150]) # Grey for lattice nodes
+                # Lattice nodes as smaller dodecahedrons
+                self.draw_dodecahedron(pt, scale=0.5, color=[150, 150, 150], name=f"LATTICE_NODE_{i}")
 
         return nodes
 

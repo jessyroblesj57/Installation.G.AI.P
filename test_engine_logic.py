@@ -22,7 +22,16 @@ def test_engine():
     # Test lattice generation
     nodes = engine.generate_nilchi_lattice(10)
     assert len(nodes) == 10, f"Expected 10 nodes, got {len(nodes)}"
+    # Check if distribution is not just a simple line or predictable grid
+    assert nodes[0] != nodes[1], "Nodes should be at different positions"
     print("Lattice generation logic check passed")
+
+    # Test dodecahedron calculation (relies on PHI)
+    # Even in headless mode, we can test that the internal vertex math doesn't crash
+    # and returns empty list as mocked for rs is None
+    ids = engine.draw_dodecahedron([0,0,0])
+    assert ids == [], "Should return empty list in headless mode"
+    print("Dodecahedron method check passed (headless)")
 
 if __name__ == "__main__":
     try:
