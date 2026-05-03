@@ -24,14 +24,12 @@ VPN_FILE=$(realpath "$1")
 VPN_FILENAME=$(basename "$VPN_FILE")
 VPN_DIR=$(dirname "$VPN_FILE")
 
-# Debug output for troubleshooting
-echo "[DEBUG] VPN_FILE: $VPN_FILE"
-echo "[DEBUG] VPN_FILENAME: $VPN_FILENAME"
-echo "[DEBUG] VPN_DIR: $VPN_DIR"
-
 BROWSER_PORT=3000
 CONTAINER_VPN="secure_vpn_gateway"
 CONTAINER_BROWSER="secure_firefox_vm"
+
+VPN_USER="${VPN_USER:-<VPN_USERNAME>}"
+VPN_PASS="${VPN_PASS:-<VPN_PASSWORD>}"
 
 if [[ ! -f "$VPN_FILE" ]]; then
     echo "[!] Error: VPN file not found at $VPN_FILE"
@@ -61,10 +59,10 @@ generate_hostname() {
 
 # Select a random common screen resolution (Blending in is better than true random)
 RESOLUTIONS=("1920x1080" "1366x768" "1440x900" "1536x864" "2560x1440")
-RAND_INDEX=$(($RANDOM % ${#RESOLUTIONS[@]}))
-RAND_RES=${RESOLUTIONS[$RAND_INDEX]}
-WIDTH=$(echo $RAND_RES | cut -d'x' -f1)
-HEIGHT=$(echo $RAND_RES | cut -d'x' -f2)
+RAND_INDEX=$((RANDOM % ${#RESOLUTIONS[@]}))
+RAND_RES=${RESOLUTIONS[RAND_INDEX]}
+WIDTH=${RAND_RES%x*}
+HEIGHT=${RAND_RES#*x}
 
 RAND_MAC=$(generate_mac)
 RAND_HOST=$(generate_hostname)
@@ -84,17 +82,18 @@ docker rm -f $CONTAINER_BROWSER $CONTAINER_VPN 2>/dev/null || true
 echo "[*] Starting VPN Gateway (Gluetun)..."
 
 
-# This is one long line to avoid line-ending issues
 docker run -d \
   --name "$CONTAINER_VPN" \
   --cap-add=NET_ADMIN \
   --device /dev/net/tun:/dev/net/tun \
+  --mac-address="$RAND_MAC" \
+  --hostname="$RAND_HOST" \
   -v "$VPN_DIR:/gluetun" \
   -e VPN_TYPE=openvpn \
   -e VPN_SERVICE_PROVIDER=custom \
   -e OPENVPN_CUSTOM_CONFIG="/gluetun/$VPN_FILENAME" \
-  -e OPENVPN_USER="dCSrVNthO4GJ3B4D" \
-  -e OPENVPN_PASSWORD="oo2cqeqeqfptT9s3jtMh254FQgPtVWl6" \
+  -e OPENVPN_USER="$VPN_USER" \
+  -e OPENVPN_PASSWORD="$VPN_PASS" \
   -p "$BROWSER_PORT":3000 \
   qmcgaw/gluetun
 
@@ -121,8 +120,7 @@ for i in {1..15}; do
     sleep 2
 done
 
-# If container IS running, check for the external IP
-VPN_IP=$(docker exec "$CONTAINER_VPN" curl -s https://ipinfo.io/ip)
+VPN_IP=$(docker exec "$CONTAINER_VPN" wget -qO- https://ipinfo.io/ip || docker exec "$CONTAINER_VPN" curl -s https://ipinfo.io/ip)
 
 if [[ -z "$VPN_IP" ]]; then
     echo "[!] VPN IP check failed. Aborting."
@@ -142,12 +140,10 @@ echo "[*] Launching Firefox VM..."
 docker run -d \
   --name $CONTAINER_BROWSER \
   --network=container:$CONTAINER_VPN \
-  --mac-address="$RAND_MAC" \
-  --hostname="$RAND_HOST" \
   -e PUID=$(id -u) \
   -e PGID=$(id -g) \
-  -e CUSTOM_RES_W=$WIDTH \
-  -e CUSTOM_RES_H=$HEIGHT \
+  -e SCREEN_WIDTH=$WIDTH \
+  -e SCREEN_HEIGHT=$HEIGHT \
   --shm-size="2gb" \
   lscr.io/linuxserver/firefox:latest
 
